@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game log</title>
+<style>
+  :root {
+    --bg: #F4F6F8; --surface: #fff; --ink: #12141A; --muted: #5A616E;
+    --faint: #8E96A3; --line: #E2E6EC; --accent: #4C4FE0;
+    --win: #0E8C6E; --loss: #C4453B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 15px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .record { font-family: ui-monospace, monospace; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.wide { grid-column: span 3; }
+  label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+  input, select, textarea {
+    font: inherit; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 7px; background: #fff; color: var(--ink); width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .req { color: var(--accent); }
+  .sub { grid-column: span 3; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); margin: 10px 0 -4px; }
+  button[type=submit] {
+    font: inherit; font-weight: 500; margin-top: 18px; padding: 11px 22px;
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button[type=submit]:hover { filter: brightness(1.08); }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); margin: 44px 0 12px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  tr:last-child td { border-bottom: 0; }
+  .w { color: var(--win); font-weight: 600; }
+  .l { color: var(--loss); font-weight: 600; }
+  .del { background: none; border: 0; color: var(--faint); cursor: pointer; padding: 0; font-size: 15px; }
+  .del:hover { color: var(--loss); }
+  .hint { font-size: 12px; color: var(--faint); margin: 2px 0 0; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .field.wide, .sub { grid-column: span 1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Game log</h1>
+  <p class="record">
+    {{ wins }}W &ndash; {{ losses }}L
+    {%- if winrate is not none %} &nbsp;/&nbsp; {{ winrate }}% winrate{% endif %}
+  </p>
+
+  <form class="card" method="post" action="/add">
+    <div class="grid">
+
+      <div class="field">
+        <label for="played_on">Date <span class="req">*</span></label>
+        <input type="date" id="played_on" name="played_on" required
+               value="{{ carry.played_on or today }}">
+      </div>
+
+      <div class="field">
+        <label for="event_type">Event <span class="req">*</span></label>
+        <select id="event_type" name="event_type" required>
+          {% for v in events %}
+            <option value="{{ v }}" {{ 'selected' if carry.event_type == v }}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="location">Location</label>
+        <input list="l_location" id="location" name="location" value="{{ carry.location }}">
+        <datalist id="l_location">
+          {% for v in locations %}<option value="{{ v }}">{% endfor %}
+        </datalist>
+      </div>
+
+      <p class="sub">Me</p>
+
+      <div class="field">
+        <label for="my_leader">Legend <span class="req">*</span></label>
+        <select id="my_leader" name="my_leader" required data-d1="my_domain_1" data-d2="my_domain_2">
+          <option value="">&mdash;</option>
+          {% for v in legends %}
+            <option value="{{ v }}" {{ 'selected' if carry.my_leader == v }}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="my_domain_1">Domain 1 <span class="req">*</span></label>
+        <select id="my_domain_1" name="my_domain_1" required>
+          <option value="">&mdash;</option>
+          {% for d in domains %}
+            <option value="{{ d }}" {{ 'selected' if carry.my_domain_1 == d }}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="my_domain_2">Domain 2</label>
+        <select id="my_domain_2" name="my_domain_2">
+          <option value="">&mdash;</option>
+          {% for d in domains %}
+            <option value="{{ d }}" {{ 'selected' if carry.my_domain_2 == d }}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="my_deck">Deck</label>
+        <input list="l_my_deck" id="my_deck" name="my_deck" value="{{ carry.my_deck }}">
+        <datalist id="l_my_deck">
+          {% for v in decks %}<option value="{{ v }}">{% endfor %}
+        </datalist>
+      </div>
+
+      <p class="sub">Them</p>
+
+      <div class="field">
+        <label for="opp_leader">Legend <span class="req">*</span></label>
+        <select id="opp_leader" name="opp_leader" required data-d1="opp_domain_1" data-d2="opp_domain_2">
+          <option value="">&mdash;</option>
+          {% for v in legends %}
+            <option value="{{ v }}" {{ 'selected' if carry.opp_leader == v }}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="opp_domain_1">Domain 1 <span class="req">*</span></label>
+        <select id="opp_domain_1" name="opp_domain_1" required>
+          <option value="">&mdash;</option>
+          {% for d in domains %}
+            <option value="{{ d }}" {{ 'selected' if carry.opp_domain_1 == d }}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="opp_domain_2">Domain 2</label>
+        <select id="opp_domain_2" name="opp_domain_2">
+          <option value="">&mdash;</option>
+          {% for d in domains %}
+            <option value="{{ d }}" {{ 'selected' if carry.opp_domain_2 == d }}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="opponent">Opponent</label>
+        <input list="l_opponent" id="opponent" name="opponent" value="{{ carry.opponent }}">
+        <datalist id="l_opponent">
+          {% for v in opponents %}<option value="{{ v }}">{% endfor %}
+        </datalist>
+      </div>
+
+      <p class="sub">Result</p>
+
+      <div class="field">
+        <label for="won">Outcome <span class="req">*</span></label>
+        <select id="won" name="won" required>
+          <option value="true">Win</option>
+          <option value="false">Loss</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="went_first">Went first</label>
+        <select id="went_first" name="went_first">
+          <option value="">Unknown</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="series_id">Series ID</label>
+        <input type="number" id="series_id" name="series_id"
+               value="{{ carry.series_id }}" placeholder="{{ next_series }} (Bo3 only)">
+        <p class="hint">Blank for Bo1. Next free: {{ next_series }}</p>
+      </div>
+
+      <div class="field">
+        <label for="game_in_series">Game #</label>
+        <select id="game_in_series" name="game_in_series">
+          <option value="">&mdash;</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+
+      <div class="field wide">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="2"></textarea>
+      </div>
+
+    </div>
+    <button type="submit">Log game</button>
+  </form>
+
+  <h2>Recent</h2>
+  <table>
+    <tr>
+      <th>Date</th><th>Event</th><th>Me</th><th>Them</th>
+      <th>First</th><th>Result</th><th></th>
+    </tr>
+    {% for g in recent %}
+    <tr>
+      <td>{{ g.played_on }}</td>
+      <td>{{ g.event_type }}{% if g.series_id %} &middot; S{{ g.series_id }}G{{ g.game_in_series }}{% endif %}</td>
+      <td>{{ g.my_leader }}<br><span style="color:var(--faint)">{{ g.my_colors }}</span></td>
+      <td>{{ g.opp_leader }}<br><span style="color:var(--faint)">{{ g.opp_colors }}</span></td>
+      <td>{% if g.went_first is none %}&mdash;{% elif g.went_first %}Yes{% else %}No{% endif %}</td>
+      <td class="{{ 'w' if g.won else 'l' }}">{{ 'W' if g.won else 'L' }}</td>
+      <td>
+        <form method="post" action="/delete/{{ g.id }}" onsubmit="return confirm('Delete this game?')">
+          <button class="del" type="submit">&times;</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="color:var(--faint)">No games logged yet.</td></tr>
+    {% endfor %}
+  </table>
+
+</div>
+
+<script>
+  // Legend -> [domain 1, domain 2], learned from games already logged.
+  // Picking a legend you've recorded before fills both domains in. Anything
+  // new stays manual until you've entered it once.
+  const LEGEND_DOMAINS = {{ legend_domains | tojson }};
+
+  document.querySelectorAll('select[data-d1]').forEach(function (leaderSelect) {
+    const d1 = document.getElementById(leaderSelect.dataset.d1);
+    const d2 = document.getElementById(leaderSelect.dataset.d2);
+    leaderSelect.addEventListener('change', function () {
+      const known = LEGEND_DOMAINS[leaderSelect.value];
+      if (known) {
+        d1.value = known[0] || '';
+        d2.value = known[1] || '';
+      }
+    });
+  });
+</script>
+</body>
+</html>
