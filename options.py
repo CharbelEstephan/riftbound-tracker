@@ -69,3 +69,36 @@ EVENT_TYPES = [
     "Pre Rift",
     "Online",
 ]
+
+# Riftbound sets, in release order. Add new ones here as they drop.
+SETS = [
+    "Origins",
+    "Spiritforged",
+    "Unleashed",
+    "Vendetta",
+]
+
+# Pack-opening products you can log a pull from.
+PRODUCTS = [
+    "Single Pack",
+    "Sleeve",
+    "Prize Booster Pack",
+    "Prize Nexus Night Pack",
+    "Vault",
+    "Other",
+]
+
+# Ordered (column_name, display_label) for each hit_* column on openings.
+# The order here drives both the form's hit grid and the recent-openings total.
+HIT_TYPES = [
+    ("hit_rare",       "Rare"),
+    ("hit_leader",     "Leader"),
+    ("hit_dbl_leader", "Double Leader"),
+    ("hit_epic",       "Epic"),
+    ("hit_fa_rune",    "Full Art Rune"),
+    ("hit_alt_art",    "Alt Art"),
+    ("hit_overnumber", "Overnumber"),
+    ("hit_signature",  "Signature"),
+    ("hit_ultimate",   "Ultimate"),
+    ("hit_nn_chase",   "Nexus Night Chase"),
+]

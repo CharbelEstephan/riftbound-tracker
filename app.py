@@ -80,6 +80,30 @@ def get_recent(limit=15):
             return cur.fetchall()
 
 
+def get_distinct_openings(column):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT DISTINCT {column} FROM openings "
+                f"WHERE {column} IS NOT NULL AND {column} <> '' ORDER BY {column}"
+            )
+            return [r[0] for r in cur.fetchall()]
+
+
+def get_recent_openings(limit=15):
+    # Total hits is the sum of the ten hit_* columns, built from options so a
+    # new hit type only ever needs adding in one place.
+    total = " + ".join(col for col, _ in options.HIT_TYPES)
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute(
+                f"SELECT *, ({total}) AS total_hits FROM openings "
+                "ORDER BY acquired_on DESC, id DESC LIMIT %s",
+                (limit,),
+            )
+            return cur.fetchall()
+
+
 def get_record():
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -124,6 +148,12 @@ def index():
         wins=wins,
         losses=losses,
         winrate=round(100 * wins / total, 1) if total else None,
+        products=options.PRODUCTS,
+        hit_types=options.HIT_TYPES,
+        sets=options.SETS + [s for s in get_distinct_openings("set_name")
+                             if s not in options.SETS],
+        pull_locations=get_distinct_openings("location"),
+        recent_openings=get_recent_openings(),
         carry={k: request.args.get(k, "") for k in
                ["played_on", "series_id", "event_type", "location",
                 "my_leader", "my_domain_1", "my_domain_2", "my_deck",
@@ -210,6 +240,45 @@ def delete(game_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM games WHERE id = %s", (game_id,))
+    return redirect(url_for("index"))
+
+
+@app.route("/pulls", methods=["POST"])
+def add_pull():
+    f = request.form
+
+    hit_cols = [col for col, _ in options.HIT_TYPES]
+    hit_vals = [int(f.get(col) or 0) for col in hit_cols]
+
+    cols = ["acquired_on", "product", "quantity", "set_name", "is_pity",
+            *hit_cols, "location", "notes"]
+    vals = [
+        f["acquired_on"],
+        f["product"].strip(),
+        int(f["quantity"]),
+        f["set_name"].strip(),
+        f.get("is_pity") == "on",
+        *hit_vals,
+        blank_to_none(f.get("location")),
+        blank_to_none(f.get("notes")),
+    ]
+    placeholders = ", ".join(["%s"] * len(cols))
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO openings ({', '.join(cols)}) VALUES ({placeholders})",
+                vals,
+            )
+
+    return redirect(url_for("index"))
+
+
+@app.route("/pulls/delete/<int:opening_id>", methods=["POST"])
+def delete_pull(opening_id):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM openings WHERE id = %s", (opening_id,))
     return redirect(url_for("index"))
 
 

@@ -54,3 +54,30 @@ CREATE VIEW game_domains AS
     SELECT id, played_on, event_type, won, 'them',         opp_leader,           opp_domain_1        FROM games
     UNION ALL
     SELECT id, played_on, event_type, won, 'them',         opp_leader,           opp_domain_2        FROM games WHERE opp_domain_2 IS NOT NULL;
+
+
+-- Pack-opening / pull-rate log. Independent of games; one row per acquisition
+-- event (a pack, a sleeve, a vault, etc.). Each hit_* column counts how many
+-- of that hit type came out of the packs in this row.
+CREATE TABLE openings (
+    id            SERIAL PRIMARY KEY,
+    acquired_on   DATE NOT NULL,
+    product       TEXT NOT NULL,
+    quantity      INT NOT NULL,
+    set_name      TEXT NOT NULL,
+    is_pity       BOOLEAN DEFAULT FALSE,
+    hit_rare        INT NOT NULL DEFAULT 0,
+    hit_leader      INT NOT NULL DEFAULT 0,
+    hit_dbl_leader  INT NOT NULL DEFAULT 0,
+    hit_epic        INT NOT NULL DEFAULT 0,
+    hit_fa_rune     INT NOT NULL DEFAULT 0,
+    hit_alt_art     INT NOT NULL DEFAULT 0,
+    hit_overnumber  INT NOT NULL DEFAULT 0,
+    hit_signature   INT NOT NULL DEFAULT 0,
+    hit_ultimate    INT NOT NULL DEFAULT 0,
+    hit_nn_chase    INT NOT NULL DEFAULT 0,
+    location      TEXT,
+    notes         TEXT
+);
+
+CREATE INDEX idx_openings_acquired_on ON openings (acquired_on);
