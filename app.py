@@ -271,7 +271,7 @@ def add_pull():
                 vals,
             )
 
-    return redirect(url_for("index"))
+    return redirect(url_for("index", _anchor="tab-pulls"))
 
 
 @app.route("/pulls/delete/<int:opening_id>", methods=["POST"])
@@ -279,7 +279,7 @@ def delete_pull(opening_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM openings WHERE id = %s", (opening_id,))
-    return redirect(url_for("index"))
+    return redirect(url_for("index", _anchor="tab-pulls"))
 
 
 if __name__ == "__main__":

@@ -365,14 +365,28 @@
   });
 
   // Client-side tab switch: show one panel, hide the other. No framework.
+  // The active panel id is mirrored into location.hash so it survives a page
+  // reload (e.g. after submitting a form, which redirects back to "/").
+  function activateTab(panelId) {
+    var target = document.querySelector('.tab[data-panel="' + panelId + '"]');
+    if (!target) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
+    target.classList.add('active');
+    document.getElementById(panelId).hidden = false;
+  }
+
   document.querySelectorAll('.tab').forEach(function (tab) {
     tab.addEventListener('click', function () {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.panel).hidden = false;
+      activateTab(tab.dataset.panel);
+      history.replaceState(null, '', '#' + tab.dataset.panel);
     });
   });
+
+  // On load, restore the tab named in the URL hash (falls back to default).
+  if (location.hash) {
+    activateTab(location.hash.slice(1));
+  }
 </script>
 </body>
 </html>
