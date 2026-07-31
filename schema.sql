@@ -74,6 +74,7 @@ CREATE TABLE openings (
     hit_alt_art     INT NOT NULL DEFAULT 0,
     hit_overnumber  INT NOT NULL DEFAULT 0,
     hit_signature   INT NOT NULL DEFAULT 0,
+    hit_sig_spell   INT NOT NULL DEFAULT 0,
     hit_ultimate    INT NOT NULL DEFAULT 0,
     hit_nn_chase    INT NOT NULL DEFAULT 0,
     location      TEXT,

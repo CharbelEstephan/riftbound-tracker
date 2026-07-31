@@ -85,6 +85,7 @@ PRODUCTS = [
     "Prize Booster Pack",
     "Prize Nexus Night Pack",
     "Vault",
+    "Starter Deck Pack",
     "Other",
 ]
 
@@ -99,6 +100,7 @@ HIT_TYPES = [
     ("hit_alt_art",    "Alt Art"),
     ("hit_overnumber", "Overnumber"),
     ("hit_signature",  "Signature"),
+    ("hit_sig_spell",  "Signature Spells"),
     ("hit_ultimate",   "Ultimate"),
     ("hit_nn_chase",   "Nexus Night Chase"),
 ]
