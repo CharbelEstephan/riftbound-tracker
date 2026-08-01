@@ -115,9 +115,9 @@ def get_distinct_boxes(column):
 
 
 def get_recent_boxes(limit=15):
-    # Same idea as get_recent_openings: total hits is the sum of the hit_*
-    # columns, built from options so a new hit type only needs adding once.
-    total = " + ".join(col for col, _ in options.HIT_TYPES)
+    # Same idea as get_recent_openings, but boxes track a subset of hit types,
+    # so the total only sums the columns the box tab actually uses.
+    total = " + ".join(col for col, _ in options.BOX_HIT_TYPES)
     with get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute(
@@ -178,6 +178,7 @@ def index():
                              if s not in options.SETS],
         pull_locations=get_distinct_openings("location"),
         recent_openings=get_recent_openings(),
+        box_hit_types=options.BOX_HIT_TYPES,
         box_sets=options.SETS + [s for s in get_distinct_boxes("set_name")
                                  if s not in options.SETS],
         box_locations=get_distinct_boxes("location"),
@@ -314,7 +315,7 @@ def delete_pull(opening_id):
 def add_box():
     f = request.form
 
-    hit_cols = [col for col, _ in options.HIT_TYPES]
+    hit_cols = [col for col, _ in options.BOX_HIT_TYPES]
     hit_vals = [int(f.get(col) or 0) for col in hit_cols]
 
     cols = ["opened_on", "quantity", "set_name", *hit_cols, "location", "notes"]

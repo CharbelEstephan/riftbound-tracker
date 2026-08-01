@@ -104,3 +104,9 @@ HIT_TYPES = [
     ("hit_ultimate",   "Ultimate"),
     ("hit_nn_chase",   "Nexus Night Chase"),
 ]
+
+# Hit types tracked on the Box Hit tab. Boxes don't track Rare, Leader, or
+# Nexus Night Chase, so they're dropped here. The boxes table still has those
+# columns (they just stay 0) - only the form and totals use this subset.
+_BOX_EXCLUDE = {"hit_rare", "hit_leader", "hit_nn_chase"}
+BOX_HIT_TYPES = [(c, l) for c, l in HIT_TYPES if c not in _BOX_EXCLUDE]

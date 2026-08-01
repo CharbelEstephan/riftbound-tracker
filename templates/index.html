@@ -381,7 +381,7 @@
       <p class="sub">Hits</p>
 
       <div class="hits">
-        {% for col, label in hit_types %}
+        {% for col, label in box_hit_types %}
         <div class="field">
           <label for="box_{{ col }}">{{ label }}</label>
           <input type="number" id="box_{{ col }}" name="{{ col }}" min="0" value="0">
