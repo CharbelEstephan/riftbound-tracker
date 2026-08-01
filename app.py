@@ -104,6 +104,30 @@ def get_recent_openings(limit=15):
             return cur.fetchall()
 
 
+def get_distinct_boxes(column):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT DISTINCT {column} FROM boxes "
+                f"WHERE {column} IS NOT NULL AND {column} <> '' ORDER BY {column}"
+            )
+            return [r[0] for r in cur.fetchall()]
+
+
+def get_recent_boxes(limit=15):
+    # Same idea as get_recent_openings: total hits is the sum of the hit_*
+    # columns, built from options so a new hit type only needs adding once.
+    total = " + ".join(col for col, _ in options.HIT_TYPES)
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute(
+                f"SELECT *, ({total}) AS total_hits FROM boxes "
+                "ORDER BY opened_on DESC, id DESC LIMIT %s",
+                (limit,),
+            )
+            return cur.fetchall()
+
+
 def get_record():
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -154,6 +178,10 @@ def index():
                              if s not in options.SETS],
         pull_locations=get_distinct_openings("location"),
         recent_openings=get_recent_openings(),
+        box_sets=options.SETS + [s for s in get_distinct_boxes("set_name")
+                                 if s not in options.SETS],
+        box_locations=get_distinct_boxes("location"),
+        recent_boxes=get_recent_boxes(),
         carry={k: request.args.get(k, "") for k in
                ["played_on", "series_id", "event_type", "location",
                 "my_leader", "my_domain_1", "my_domain_2", "my_deck",
@@ -280,6 +308,42 @@ def delete_pull(opening_id):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM openings WHERE id = %s", (opening_id,))
     return redirect(url_for("index", _anchor="tab-pulls"))
+
+
+@app.route("/boxes", methods=["POST"])
+def add_box():
+    f = request.form
+
+    hit_cols = [col for col, _ in options.HIT_TYPES]
+    hit_vals = [int(f.get(col) or 0) for col in hit_cols]
+
+    cols = ["opened_on", "quantity", "set_name", *hit_cols, "location", "notes"]
+    vals = [
+        f["opened_on"],
+        int(f["quantity"]),
+        f["set_name"].strip(),
+        *hit_vals,
+        blank_to_none(f.get("location")),
+        blank_to_none(f.get("notes")),
+    ]
+    placeholders = ", ".join(["%s"] * len(cols))
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO boxes ({', '.join(cols)}) VALUES ({placeholders})",
+                vals,
+            )
+
+    return redirect(url_for("index", _anchor="tab-boxes"))
+
+
+@app.route("/boxes/delete/<int:box_id>", methods=["POST"])
+def delete_box(box_id):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM boxes WHERE id = %s", (box_id,))
+    return redirect(url_for("index", _anchor="tab-boxes"))
 
 
 if __name__ == "__main__":

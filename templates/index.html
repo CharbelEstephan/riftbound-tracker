@@ -64,6 +64,7 @@
   <div class="tabs">
     <button type="button" class="tab active" data-panel="tab-matches">Matches</button>
     <button type="button" class="tab" data-panel="tab-pulls">Pulls</button>
+    <button type="button" class="tab" data-panel="tab-boxes">Box Hits</button>
   </div>
 
   <div id="tab-matches" class="tab-panel">
@@ -343,6 +344,83 @@
   </table>
 
   </div><!-- /tab-pulls -->
+
+  <div id="tab-boxes" class="tab-panel" hidden>
+
+  <h1>Box Hit Tracker</h1>
+
+  <form class="card" method="post" action="/boxes">
+    <div class="grid">
+
+      <div class="field">
+        <label for="opened_on">Date <span class="req">*</span></label>
+        <input type="date" id="opened_on" name="opened_on" required value="{{ today }}">
+      </div>
+
+      <div class="field">
+        <label for="box_quantity">Quantity <span class="req">*</span></label>
+        <input type="number" id="box_quantity" name="quantity" min="1" value="1" required>
+      </div>
+
+      <div class="field">
+        <label for="box_set">Set <span class="req">*</span></label>
+        <select id="box_set" name="set_name" required>
+          <option value="">&mdash;</option>
+          {% for v in box_sets %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="box_location">Location</label>
+        <input list="l_box_location" id="box_location" name="location">
+        <datalist id="l_box_location">
+          {% for v in box_locations %}<option value="{{ v }}">{% endfor %}
+        </datalist>
+      </div>
+
+      <p class="sub">Hits</p>
+
+      <div class="hits">
+        {% for col, label in hit_types %}
+        <div class="field">
+          <label for="box_{{ col }}">{{ label }}</label>
+          <input type="number" id="box_{{ col }}" name="{{ col }}" min="0" value="0">
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="field wide">
+        <label for="box_notes">Notes</label>
+        <textarea id="box_notes" name="notes" rows="2"></textarea>
+      </div>
+
+    </div>
+    <button type="submit">Log box</button>
+  </form>
+
+  <h2>Recent</h2>
+  <table>
+    <tr>
+      <th>Date</th><th>Qty</th><th>Set</th><th>Hits</th><th></th>
+    </tr>
+    {% for b in recent_boxes %}
+    <tr>
+      <td>{{ b.opened_on }}</td>
+      <td>{{ b.quantity }}</td>
+      <td>{{ b.set_name }}</td>
+      <td>{{ b.total_hits }}</td>
+      <td>
+        <form method="post" action="/boxes/delete/{{ b.id }}" onsubmit="return confirm('Delete this box?')">
+          <button class="del" type="submit">&times;</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="color:var(--faint)">No boxes logged yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  </div><!-- /tab-boxes -->
 
 </div>
 
