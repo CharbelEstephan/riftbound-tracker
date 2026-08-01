@@ -98,9 +98,9 @@ HIT_TYPES = [
     ("hit_epic",       "Epic"),
     ("hit_fa_rune",    "Full Art Rune"),
     ("hit_alt_art",    "Alt Art"),
+    ("hit_sig_spell",  "Signature Spells"),
     ("hit_overnumber", "Overnumber"),
     ("hit_signature",  "Signature"),
-    ("hit_sig_spell",  "Signature Spells"),
     ("hit_ultimate",   "Ultimate"),
     ("hit_nn_chase",   "Nexus Night Chase"),
 ]
