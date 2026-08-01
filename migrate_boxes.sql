@@ -16,6 +16,7 @@ CREATE TABLE boxes (
     hit_overnumber  INT NOT NULL DEFAULT 0,
     hit_signature   INT NOT NULL DEFAULT 0,
     hit_sig_spell   INT NOT NULL DEFAULT 0,
+    hit_sp_rare     INT NOT NULL DEFAULT 0,
     hit_ultimate    INT NOT NULL DEFAULT 0,
     hit_nn_chase    INT NOT NULL DEFAULT 0,
     location      TEXT,

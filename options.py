@@ -99,6 +99,7 @@ HIT_TYPES = [
     ("hit_fa_rune",    "Full Art Rune"),
     ("hit_sig_spell",  "Signature Spells"),
     ("hit_alt_art",    "Alt Art"),
+    ("hit_sp_rare",    "SP Rare"),
     ("hit_overnumber", "Overnumber"),
     ("hit_signature",  "Signature"),
     ("hit_ultimate",   "Ultimate"),
