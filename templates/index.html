@@ -31,6 +31,9 @@
   .wrap[data-tab="tab-boxes"]   { --accent: #F0B23C; --accent-2: #FB6B63; }
   .wrap { transition: --accent .3s ease, --accent-2 .3s ease; }
   * { box-sizing: border-box; }
+  /* Author display rules (e.g. .field { display:flex }) otherwise beat the
+     UA [hidden] rule, so force it - the series/single toggle relies on it. */
+  [hidden] { display: none !important; }
   body {
     margin: 0; color: var(--ink);
     font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 15px;
@@ -139,6 +142,21 @@
   .check { flex-direction: row; align-items: center; gap: 8px; }
   .check input { width: auto; accent-color: var(--accent); }
   .check label { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--muted); }
+  /* Toggle switch for "Best-of-3 series". */
+  .switch { grid-column: span 3; display: inline-flex; align-items: center; gap: 11px; cursor: pointer; user-select: none; width: max-content; }
+  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .switch .track { position: relative; width: 42px; height: 24px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 0 1px var(--line-strong); transition: background .18s; flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); transition: transform .18s; }
+  .switch input:checked + .track { background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent) 72%, #000)); box-shadow: inset 0 0 0 1px transparent; }
+  .switch input:checked + .track::after { transform: translateX(18px); }
+  .switch input:focus-visible + .track { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .switch-label { font-size: 13.5px; font-weight: 500; color: var(--ink); }
+  /* Per-game rows revealed for a series. */
+  .series-games { display: flex; flex-direction: column; gap: 10px; }
+  .series-game { display: grid; grid-template-columns: 110px 1fr 1fr; align-items: center; gap: 10px; }
+  .series-game .gnum { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .series-game .opt { font-weight: 400; color: var(--faint); font-size: 11px; }
+  @media (max-width: 640px) { .series-game { grid-template-columns: 1fr 1fr; } .series-game .gnum { grid-column: span 2; } }
   .hits { grid-column: span 3; display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; }
   .hits .field label { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--muted); }
   .pity { color: var(--gold); font-weight: 700; font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(245, 185, 66, 0.14); box-shadow: inset 0 0 0 1px rgba(245, 185, 66, 0.3); }
@@ -288,7 +306,14 @@
 
       <p class="sub">Result</p>
 
-      <div class="field">
+      <label class="switch">
+        <input type="checkbox" id="is_series" name="is_series">
+        <span class="track"></span>
+        <span class="switch-label">Best-of-3 series</span>
+      </label>
+
+      <!-- Single game (default). Hidden + disabled when logging a series. -->
+      <div class="field js-single">
         <label for="won">Outcome <span class="req">*</span></label>
         <select id="won" name="won" required>
           <option value="true">Win</option>
@@ -296,30 +321,36 @@
         </select>
       </div>
 
-      <div class="field">
-        <label for="went_first">Went first</label>
+      <div class="field js-single">
+        <label for="went_first">Play order</label>
         <select id="went_first" name="went_first">
           <option value="">Unknown</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
+          <option value="true">First</option>
+          <option value="false">Second</option>
         </select>
       </div>
 
-      <div class="field">
-        <label for="series_id">Series ID</label>
-        <input type="number" id="series_id" name="series_id"
-               value="{{ carry.series_id }}" placeholder="{{ next_series }} (Bo3 only)">
-        <p class="hint">Blank for Bo1. Next free: {{ next_series }}</p>
-      </div>
-
-      <div class="field">
-        <label for="game_in_series">Game #</label>
-        <select id="game_in_series" name="game_in_series">
-          <option value="">&mdash;</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-        </select>
+      <!-- Bo3 series. Series number is assigned automatically on submit; the
+           legends, event and opponent above apply to every game. -->
+      <div class="field wide js-series" hidden>
+        <div class="series-games">
+          {% for n in [1, 2, 3] %}
+          <div class="series-game">
+            <span class="gnum">Game {{ n }}{% if n == 3 %} <span class="opt">· if played</span>{% endif %}</span>
+            <select name="s_result_{{ n }}" disabled {% if n < 3 %}data-req="1"{% endif %}>
+              <option value="">{{ 'Not played' if n == 3 else '—' }}</option>
+              <option value="true">Win</option>
+              <option value="false">Loss</option>
+            </select>
+            <select name="s_first_{{ n }}" disabled>
+              <option value="">Order?</option>
+              <option value="true">First</option>
+              <option value="false">Second</option>
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="hint">Same legends throughout &middot; series #{{ next_series }} assigned automatically.</p>
       </div>
 
       <div class="field wide">
@@ -560,6 +591,30 @@
       }
     });
   });
+
+  // "Best-of-3 series" toggle. Off: log one game with Outcome + Play order.
+  // On: hide those and reveal a per-game grid (win/loss + who went first for
+  // each game); the series number is assigned server-side. We disable whichever
+  // set is hidden so only the relevant fields submit and get validated -
+  // disabled controls are skipped by both the browser's required-check and the
+  // form payload, so a hidden "Outcome *" never blocks the series submit.
+  const isSeries = document.getElementById('is_series');
+  function syncSeries() {
+    const on = isSeries.checked;
+    document.querySelectorAll('.js-single').forEach(function (el) {
+      el.hidden = on;
+      el.querySelectorAll('input, select, textarea').forEach(i => i.disabled = on);
+    });
+    document.querySelectorAll('.js-series').forEach(function (el) {
+      el.hidden = !on;
+      el.querySelectorAll('select').forEach(function (s) {
+        s.disabled = !on;
+        // Games 1 and 2 always happen in a Bo3; game 3 is optional.
+        s.required = on && s.dataset.req === '1';
+      });
+    });
+  }
+  if (isSeries) { isSeries.addEventListener('change', syncSeries); syncSeries(); }
 
   // Client-side tab switch: show one panel, hide the other. No framework.
   // The active panel id is mirrored into location.hash so it survives a page

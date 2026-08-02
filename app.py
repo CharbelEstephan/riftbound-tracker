@@ -201,6 +201,33 @@ def clean_domains(d1, d2):
 
 
 
+GAME_COLS = [
+    "played_on", "series_id", "game_in_series", "event_type", "location",
+    "my_leader", "my_domain_1", "my_domain_2", "my_deck", "opponent",
+    "opp_leader", "opp_domain_1", "opp_domain_2", "went_first", "won", "notes",
+]
+
+
+def insert_games(games):
+    """Insert one or more game rows (each a dict keyed by GAME_COLS)."""
+    placeholders = ", ".join(["%s"] * len(GAME_COLS))
+    rows = [tuple(g[c] for c in GAME_COLS) for g in games]
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.executemany(
+                f"INSERT INTO games ({', '.join(GAME_COLS)}) "
+                f"VALUES ({placeholders})",
+                rows,
+            )
+
+
+def parse_bool(value):
+    """Form tri-state: 'true'/'false' -> bool, anything else -> None."""
+    if value not in ("true", "false"):
+        return None
+    return value == "true"
+
+
 @app.route("/add", methods=["POST"])
 def add():
     f = request.form
@@ -208,58 +235,49 @@ def add():
     my_d1, my_d2 = clean_domains(f.get("my_domain_1"), f.get("my_domain_2"))
     opp_d1, opp_d2 = clean_domains(f.get("opp_domain_1"), f.get("opp_domain_2"))
 
-    went_first = f.get("went_first")
-    went_first = None if went_first == "" else (went_first == "true")
-
-    row = (
-        f["played_on"],
-        blank_to_none(f.get("series_id")),
-        blank_to_none(f.get("game_in_series")),
-        f["event_type"].strip(),
-        blank_to_none(f.get("location")),
-        f["my_leader"].strip(),
-        my_d1,
-        my_d2,
-        blank_to_none(f.get("my_deck")),
-        blank_to_none(f.get("opponent")),
-        f["opp_leader"].strip(),
-        opp_d1,
-        opp_d2,
-        went_first,
-        f["won"] == "true",
-        blank_to_none(f.get("notes")),
+    # Fields every game shares, whether it's a single game or a whole series.
+    base = dict(
+        played_on=f["played_on"],
+        event_type=f["event_type"].strip(),
+        location=blank_to_none(f.get("location")),
+        my_leader=f["my_leader"].strip(),
+        my_domain_1=my_d1,
+        my_domain_2=my_d2,
+        my_deck=blank_to_none(f.get("my_deck")),
+        opponent=blank_to_none(f.get("opponent")),
+        opp_leader=f["opp_leader"].strip(),
+        opp_domain_1=opp_d1,
+        opp_domain_2=opp_d2,
+        notes=blank_to_none(f.get("notes")),
     )
 
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO games
-                    (played_on, series_id, game_in_series, event_type, location,
-                     my_leader, my_domain_1, my_domain_2, my_deck, opponent,
-                     opp_leader, opp_domain_1, opp_domain_2,
-                     went_first, won, notes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                row,
-            )
-
-    if f.get("series_id"):
-        return redirect(url_for(
-            "index",
-            played_on=f["played_on"],
-            series_id=f["series_id"],
-            event_type=f["event_type"],
-            location=f.get("location", ""),
-            my_leader=f["my_leader"],
-            my_domain_1=my_d1,
-            my_domain_2=my_d2 or "",
-            my_deck=f.get("my_deck", ""),
-            opponent=f.get("opponent", ""),
-            opp_leader=f["opp_leader"],
-            opp_domain_1=opp_d1,
-            opp_domain_2=opp_d2 or "",
-        ))
+    if f.get("is_series"):
+        # One shared series number for every game the user filled in. Games are
+        # numbered 1..3; a game with no win/loss selected just didn't happen
+        # (e.g. a 2-0 sweep leaves game 3 blank).
+        series_id = get_next_series_id()
+        games = []
+        for n in (1, 2, 3):
+            won = parse_bool(f.get(f"s_result_{n}"))
+            if won is None:
+                continue
+            games.append(dict(
+                base,
+                series_id=series_id,
+                game_in_series=n,
+                went_first=parse_bool(f.get(f"s_first_{n}")),
+                won=won,
+            ))
+        if games:
+            insert_games(games)
+    else:
+        insert_games([dict(
+            base,
+            series_id=None,
+            game_in_series=None,
+            went_first=parse_bool(f.get("went_first")),
+            won=f["won"] == "true",
+        )])
 
     return redirect(url_for("index"))
 
