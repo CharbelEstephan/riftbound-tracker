@@ -1,11 +1,13 @@
 import os
+import hmac
+from functools import wraps
 from collections import Counter, defaultdict
 from datetime import date
 
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, session, url_for
 
 import options
 
@@ -19,6 +21,50 @@ if not DATABASE_URL:
         "DATABASE_URL is not set. Create a .env file containing one line:\n"
         "DATABASE_URL=<your Neon connection string>"
     )
+
+APP_PASSWORD = os.environ.get("APP_PASSWORD")
+if not APP_PASSWORD:
+    raise SystemExit(
+        "APP_PASSWORD is not set. Add a line to your .env file:\n"
+        "APP_PASSWORD=<the shared password you'll log in with>"
+    )
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise SystemExit(
+        "SECRET_KEY is not set. Add a line to your .env file:\n"
+        "SECRET_KEY=<a long random string used to sign session cookies>"
+    )
+app.secret_key = SECRET_KEY
+
+
+def login_required(view):
+    """Send any unauthenticated request to /login, then run the view as normal."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("authed"):
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        supplied = request.form.get("password", "")
+        # Constant-time compare so a wrong guess can't be timed character by character.
+        if hmac.compare_digest(supplied.encode("utf-8"), APP_PASSWORD.encode("utf-8")):
+            session["authed"] = True
+            return redirect(url_for("index"))
+        error = "Incorrect password."
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 def get_conn():
@@ -145,6 +191,7 @@ def blank_to_none(value):
 
 
 @app.route("/")
+@login_required
 def index():
     wins, losses = get_record()
     total = wins + losses
@@ -229,6 +276,7 @@ def parse_bool(value):
 
 
 @app.route("/add", methods=["POST"])
+@login_required
 def add():
     f = request.form
 
@@ -283,6 +331,7 @@ def add():
 
 
 @app.route("/delete/<int:game_id>", methods=["POST"])
+@login_required
 def delete(game_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -291,6 +340,7 @@ def delete(game_id):
 
 
 @app.route("/pulls", methods=["POST"])
+@login_required
 def add_pull():
     f = request.form
 
@@ -322,6 +372,7 @@ def add_pull():
 
 
 @app.route("/pulls/delete/<int:opening_id>", methods=["POST"])
+@login_required
 def delete_pull(opening_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -330,6 +381,7 @@ def delete_pull(opening_id):
 
 
 @app.route("/boxes", methods=["POST"])
+@login_required
 def add_box():
     f = request.form
 
@@ -358,6 +410,7 @@ def add_box():
 
 
 @app.route("/boxes/delete/<int:box_id>", methods=["POST"])
+@login_required
 def delete_box(box_id):
     with get_conn() as conn:
         with conn.cursor() as cur:

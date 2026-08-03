@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Game log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0D14; --bg-2: #0E1120; --ink: #EDF0F7; --faint: #6C7488;
+    --line: rgba(255,255,255,0.08); --line-strong: rgba(255,255,255,0.14);
+    --accent: #7C6CFF; --accent-2: #22D3EE; --loss: #FB6B63;
+    --surface: rgba(24,27,42,0.72);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(124,108,255,0.18), transparent 60%),
+      radial-gradient(760px 460px at 100% 0%, rgba(34,211,238,0.12), transparent 55%),
+      linear-gradient(180deg, var(--bg-2), var(--bg));
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 100%; max-width: 340px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 16px; padding: 28px;
+    box-shadow: 0 0 0 1px var(--line), 0 20px 40px -24px rgba(0,0,0,0.9);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  h1 {
+    font-family: "Sora", sans-serif; font-size: 22px; font-weight: 700;
+    margin: 0 0 4px; letter-spacing: -0.02em;
+    background: linear-gradient(120deg, #fff 20%, var(--accent-2) 120%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p.sub { color: var(--faint); font-size: 13px; margin: 0 0 22px; }
+  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 500; margin-bottom: 6px; }
+  input {
+    font: inherit; width: 100%; padding: 10px 12px; color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(9,11,20,0.6);
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,108,255,0.30); }
+  button {
+    font: inherit; font-weight: 600; width: 100%; margin-top: 18px; padding: 11px;
+    color: #fff; border: 0; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(120deg, var(--accent), #6455f5);
+    box-shadow: 0 8px 22px -10px rgba(124,108,255,0.8);
+  }
+  button:hover { filter: brightness(1.07); }
+  .error { margin: 14px 0 0; font-size: 13px; color: var(--loss); }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <h1>Game log</h1>
+    <p class="sub">Enter the password to continue.</p>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autofocus required>
+    <button type="submit">Sign in</button>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  </form>
+</body>
+</html>
