@@ -79,6 +79,7 @@ CREATE TABLE openings (
     hit_ultimate    INT NOT NULL DEFAULT 0,
     hit_nn_chase    INT NOT NULL DEFAULT 0,
     location      TEXT,
+    opened_by     TEXT,
     notes         TEXT
 );
 
@@ -111,3 +112,30 @@ CREATE TABLE boxes (
 );
 
 CREATE INDEX idx_boxes_opened_on ON boxes (opened_on);
+
+
+-- Individual card names for premium pulls, so a specific hit can be looked up
+-- later (e.g. in Grafana's chase log). One row per named card. The count
+-- columns on openings/boxes still drive the rates; these tables just attach
+-- names. ON DELETE CASCADE keeps them in step when a parent row is deleted.
+--
+-- Pulls name Alt Art, SP Rare, Overnumber, Signature, Ultimate, Nexus Night
+-- Chase; boxes name SP Rare, Overnumber, Signature, Ultimate. rarity holds the
+-- display label (e.g. 'Signature').
+CREATE TABLE opening_cards (
+    id          SERIAL PRIMARY KEY,
+    opening_id  INT  NOT NULL REFERENCES openings(id) ON DELETE CASCADE,
+    rarity      TEXT NOT NULL,
+    card_name   TEXT NOT NULL
+);
+
+CREATE INDEX idx_opening_cards_opening ON opening_cards (opening_id);
+
+CREATE TABLE box_cards (
+    id          SERIAL PRIMARY KEY,
+    box_id      INT  NOT NULL REFERENCES boxes(id) ON DELETE CASCADE,
+    rarity      TEXT NOT NULL,
+    card_name   TEXT NOT NULL
+);
+
+CREATE INDEX idx_box_cards_box ON box_cards (box_id);

@@ -190,6 +190,21 @@ def blank_to_none(value):
     return value or None
 
 
+def collect_card_names(form, named_types):
+    """Gather the per-card name inputs for the given named hit types.
+
+    Each named hit type renders one text input per card pulled, all sharing the
+    name ``card_<column>``. Returns a list of (rarity_label, card_name) for
+    every non-blank name entered, ready to insert one row per card."""
+    rows = []
+    for col, label in named_types:
+        for raw in form.getlist(f"card_{col}"):
+            name = (raw or "").strip()
+            if name:
+                rows.append((label, name))
+    return rows
+
+
 @app.route("/")
 @login_required
 def index():
@@ -221,11 +236,14 @@ def index():
         winrate=round(100 * wins / total, 1) if total else None,
         products=options.PRODUCTS,
         hit_types=options.HIT_TYPES,
+        named_hit_types=options.NAMED_HIT_TYPES,
         sets=options.SETS + [s for s in get_distinct_openings("set_name")
                              if s not in options.SETS],
         pull_locations=get_distinct_openings("location"),
+        pull_openers=get_distinct_openings("opened_by"),
         recent_openings=get_recent_openings(),
         box_hit_types=options.BOX_HIT_TYPES,
+        named_box_hit_types=options.NAMED_BOX_HIT_TYPES,
         box_sets=options.SETS + [s for s in get_distinct_boxes("set_name")
                                  if s not in options.SETS],
         box_locations=get_distinct_boxes("location"),
@@ -348,7 +366,7 @@ def add_pull():
     hit_vals = [int(f.get(col) or 0) for col in hit_cols]
 
     cols = ["acquired_on", "product", "quantity", "set_name", "is_pity",
-            *hit_cols, "location", "notes"]
+            *hit_cols, "location", "opened_by", "notes"]
     vals = [
         f["acquired_on"],
         f["product"].strip(),
@@ -357,16 +375,27 @@ def add_pull():
         f.get("is_pity") == "on",
         *hit_vals,
         blank_to_none(f.get("location")),
+        blank_to_none(f.get("opened_by")),
         blank_to_none(f.get("notes")),
     ]
     placeholders = ", ".join(["%s"] * len(cols))
 
+    card_rows = collect_card_names(f, options.NAMED_HIT_TYPES)
+
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO openings ({', '.join(cols)}) VALUES ({placeholders})",
+                f"INSERT INTO openings ({', '.join(cols)}) VALUES ({placeholders}) "
+                "RETURNING id",
                 vals,
             )
+            opening_id = cur.fetchone()[0]
+            if card_rows:
+                cur.executemany(
+                    "INSERT INTO opening_cards (opening_id, rarity, card_name) "
+                    "VALUES (%s, %s, %s)",
+                    [(opening_id, rarity, name) for rarity, name in card_rows],
+                )
 
     return redirect(url_for("index", _anchor="tab-pulls"))
 
@@ -399,12 +428,22 @@ def add_box():
     ]
     placeholders = ", ".join(["%s"] * len(cols))
 
+    card_rows = collect_card_names(f, options.NAMED_BOX_HIT_TYPES)
+
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO boxes ({', '.join(cols)}) VALUES ({placeholders})",
+                f"INSERT INTO boxes ({', '.join(cols)}) VALUES ({placeholders}) "
+                "RETURNING id",
                 vals,
             )
+            box_id = cur.fetchone()[0]
+            if card_rows:
+                cur.executemany(
+                    "INSERT INTO box_cards (box_id, rarity, card_name) "
+                    "VALUES (%s, %s, %s)",
+                    [(box_id, rarity, name) for rarity, name in card_rows],
+                )
 
     return redirect(url_for("index", _anchor="tab-boxes"))
 

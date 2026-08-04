@@ -86,6 +86,8 @@ PRODUCTS = [
     "Prize Nexus Night Pack",
     "Vault",
     "Starter Deck Pack",
+    "Pre Rift Kit",
+    "Bundle Box",
     "Other",
 ]
 
@@ -111,3 +113,17 @@ HIT_TYPES = [
 # columns (they just stay 0) - only the form and totals use this subset.
 _BOX_EXCLUDE = {"hit_rare", "hit_leader", "hit_nn_chase"}
 BOX_HIT_TYPES = [(c, l) for c, l in HIT_TYPES if c not in _BOX_EXCLUDE]
+
+# Hit types that get individual card-name capture on the form, so a specific
+# premium pull can be looked up later (e.g. in Grafana's chase log). Each named
+# card becomes one row in opening_cards / box_cards. Pulls name every hit from
+# Alt Art up; boxes only from SP Rare up (boxes never track Nexus Night Chase,
+# and Alt Art isn't named card-by-card there).
+_NAMED_PULL_COLS = {
+    "hit_alt_art", "hit_sp_rare", "hit_overnumber",
+    "hit_signature", "hit_ultimate", "hit_nn_chase",
+}
+NAMED_HIT_TYPES = [(c, l) for c, l in HIT_TYPES if c in _NAMED_PULL_COLS]
+
+_NAMED_BOX_COLS = {"hit_sp_rare", "hit_overnumber", "hit_signature", "hit_ultimate"}
+NAMED_BOX_HIT_TYPES = [(c, l) for c, l in BOX_HIT_TYPES if c in _NAMED_BOX_COLS]

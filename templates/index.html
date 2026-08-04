@@ -161,6 +161,10 @@
   @media (max-width: 640px) { .series-game { grid-template-columns: 1fr 1fr; } .series-game .gnum { grid-column: span 2; } }
   .hits { grid-column: span 3; display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; }
   .hits .field label { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--muted); }
+  /* Per-card name capture, revealed when a named hit type's count > 0. */
+  .named-cards { gap: 8px; }
+  .named-cards > label { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--accent-2); font-weight: 600; }
+  .named-list { display: flex; flex-direction: column; gap: 8px; }
   .pity { color: var(--gold); font-weight: 700; font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(245, 185, 66, 0.14); box-shadow: inset 0 0 0 1px rgba(245, 185, 66, 0.3); }
   .leader { font-weight: 500; }
   .doms { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
@@ -446,6 +450,15 @@
         </datalist>
       </div>
 
+      <div class="field">
+        <label for="opened_by">Opened / bought for me</label>
+        <input list="l_opened_by" id="opened_by" name="opened_by"
+               placeholder="Who opened or bought it">
+        <datalist id="l_opened_by">
+          {% for v in pull_openers %}<option value="{{ v }}">{% endfor %}
+        </datalist>
+      </div>
+
       <div class="field check">
         <input type="checkbox" id="is_pity" name="is_pity">
         <label for="is_pity">Pity Pack</label>
@@ -462,6 +475,13 @@
         {% endfor %}
       </div>
 
+      {% for col, label in named_hit_types %}
+      <div class="named-cards field wide" data-count="{{ col }}" hidden>
+        <label>{{ label }} pulled &mdash; name each card</label>
+        <div class="named-list" data-name="card_{{ col }}"></div>
+      </div>
+      {% endfor %}
+
       <div class="field wide">
         <label for="pull_notes">Notes</label>
         <textarea id="pull_notes" name="notes" rows="2"></textarea>
@@ -475,7 +495,7 @@
   <table>
     <tr>
       <th>Date</th><th>Product</th><th>Qty</th><th>Set</th>
-      <th>Hits</th><th>Pity</th><th></th>
+      <th>Hits</th><th>By</th><th>Pity</th><th></th>
     </tr>
     {% for o in recent_openings %}
     <tr>
@@ -484,6 +504,7 @@
       <td>{{ o.quantity }}</td>
       <td>{{ o.set_name }}</td>
       <td>{{ o.total_hits }}</td>
+      <td>{{ o.opened_by or '—' }}</td>
       <td>{% if o.is_pity %}<span class="pity">Pity</span>{% else %}&mdash;{% endif %}</td>
       <td>
         <form method="post" action="/pulls/delete/{{ o.id }}" onsubmit="return confirm('Delete this opening?')">
@@ -492,7 +513,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" style="color:var(--faint)">No openings logged yet.</td></tr>
+    <tr><td colspan="8" style="color:var(--faint)">No openings logged yet.</td></tr>
     {% endfor %}
   </table>
 
@@ -541,6 +562,13 @@
         </div>
         {% endfor %}
       </div>
+
+      {% for col, label in named_box_hit_types %}
+      <div class="named-cards field wide" data-count="box_{{ col }}" hidden>
+        <label>{{ label }} pulled &mdash; name each card</label>
+        <div class="named-list" data-name="card_{{ col }}"></div>
+      </div>
+      {% endfor %}
 
       <div class="field wide">
         <label for="box_notes">Notes</label>
@@ -618,6 +646,34 @@
     });
   }
   if (isSeries) { isSeries.addEventListener('change', syncSeries); syncSeries(); }
+
+  // Per-card name capture. Each named hit type (Alt Art up on pulls, SP Rare up
+  // on boxes) shows one text box per card counted, so a specific premium pull
+  // can be named and later looked up in Grafana's chase log. Values already
+  // typed are preserved when the count changes.
+  document.querySelectorAll('.named-cards').forEach(function (section) {
+    const countInput = document.getElementById(section.dataset.count);
+    const list = section.querySelector('.named-list');
+    if (!countInput || !list) return;
+    const fieldName = list.dataset.name;
+    function render() {
+      const n = Math.max(0, parseInt(countInput.value, 10) || 0);
+      section.hidden = n === 0;
+      const existing = Array.from(list.querySelectorAll('input')).map(i => i.value);
+      list.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.name = fieldName;
+        inp.placeholder = 'Card name (optional)';
+        if (existing[i]) inp.value = existing[i];
+        list.appendChild(inp);
+      }
+    }
+    countInput.addEventListener('input', render);
+    countInput.addEventListener('change', render);
+    render();
+  });
 
   // Client-side tab switch: show one panel, hide the other. No framework.
   // The active panel id is mirrored into location.hash so it survives a page
